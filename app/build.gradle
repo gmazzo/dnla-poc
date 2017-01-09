@@ -31,4 +31,6 @@ dependencies {
     compile "org.eclipse.jetty:jetty-servlet:$jettyVersion"
     compile "org.eclipse.jetty:jetty-client:$jettyVersion"
     compile "org.eclipse.jetty:jetty-server:$jettyVersion"
+
+    compile "com.android.support:recyclerview-v7:$appCompatVersion"
 }

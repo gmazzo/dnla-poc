@@ -8,34 +8,52 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
-import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import org.fourthline.cling.android.AndroidUpnpService;
 import org.fourthline.cling.android.AndroidUpnpServiceImpl;
 import org.fourthline.cling.android.FixedAndroidLogHandler;
+import org.fourthline.cling.model.Namespace;
+import org.fourthline.cling.model.ValidationException;
+import org.fourthline.cling.model.meta.Action;
 import org.fourthline.cling.model.meta.Device;
+import org.fourthline.cling.model.meta.DeviceDetails;
+import org.fourthline.cling.model.meta.DeviceIdentity;
+import org.fourthline.cling.model.meta.Icon;
 import org.fourthline.cling.model.meta.LocalDevice;
 import org.fourthline.cling.model.meta.RemoteDevice;
 import org.fourthline.cling.model.meta.Service;
+import org.fourthline.cling.model.meta.StateVariable;
+import org.fourthline.cling.model.meta.UDAVersion;
+import org.fourthline.cling.model.resource.Resource;
+import org.fourthline.cling.model.types.DeviceType;
+import org.fourthline.cling.model.types.ServiceId;
+import org.fourthline.cling.model.types.ServiceType;
+import org.fourthline.cling.model.types.UDN;
 import org.fourthline.cling.registry.DefaultRegistryListener;
 import org.fourthline.cling.registry.Registry;
 import org.fourthline.cling.transport.Router;
 import org.fourthline.cling.transport.RouterException;
 
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class MainActivity extends AppCompatActivity implements AdapterView.OnItemClickListener {
-    private final BrowseRegistryListener registryListener = new BrowseRegistryListener();
-    private ListView list;
-    private ArrayAdapter<DeviceDisplay> listAdapter;
+public class MainActivity extends AppCompatActivity{
+
+    private final BrowseRegistryListener registryListener = new BrowseRegistryListener(this);
+    private RecyclerView devicesRecycler;
+    private DevicesRVAdapter RVAdapter;
+
     private AndroidUpnpService upnpService;
     private ServiceConnection serviceConnection = new ServiceConnection() {
 
@@ -43,7 +61,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             upnpService = (AndroidUpnpService) service;
 
             // Clear the list
-            listAdapter.clear();
+            RVAdapter.clear();
 
             // Get ready for future device advertisements
             upnpService.getRegistry().addListener(registryListener);
@@ -68,14 +86,34 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
         setContentView(R.layout.main);
 
+        //recycler
+        devicesRecycler = (RecyclerView) findViewById(R.id.recycler_list_devices);
+        LinearLayoutManager llm = new LinearLayoutManager(this);
+        llm.setOrientation(LinearLayoutManager.VERTICAL);
+        devicesRecycler.setHasFixedSize(true);
+        devicesRecycler.setLayoutManager(llm);
+        RVAdapter = new DevicesRVAdapter(this, new ArrayList<DeviceDisplay>());
+        RVAdapter.setListener(new RecyclerViewListener() {
+            @Override
+            public void recyclerViewOnItemClickListener(View view, int position) {
+                DeviceDisplay deviceDisplay = RVAdapter.getItemAt(position);
+
+                AlertDialog dialog = new AlertDialog.Builder(getApplicationContext())
+                        .setTitle(R.string.deviceDetails)
+                        .setMessage(deviceDisplay.getDetailsMessage())
+                        .setPositiveButton(R.string.OK, null)
+                        .show();
+
+                TextView textView = (TextView) dialog.findViewById(android.R.id.message);
+                textView.setTextSize(12);
+            }
+        });
+        devicesRecycler.setAdapter(RVAdapter);
+
         // Fix the logging integration between java.util.logging and Android internal logging
         org.seamless.util.logging.LoggingUtil.resetRootHandler(new FixedAndroidLogHandler());
         // Now you can enable logging as needed for various categories of Cling:
         // Logger.getLogger("org.fourthline.cling").setLevel(Level.FINEST);
-
-        list = (ListView) findViewById(android.R.id.list);
-        list.setOnItemClickListener(this);
-        list.setAdapter(listAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1));
 
         // This will start the UPnP service if it wasn't already started
         bindService(
@@ -146,21 +184,11 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         return false;
     }
 
-    @Override
-    public void onItemClick(AdapterView<?> adapterView, View view, int position, long id) {
-        DeviceDisplay deviceDisplay = (DeviceDisplay) list.getItemAtPosition(position);
-
-        AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle(R.string.deviceDetails)
-                .setMessage(deviceDisplay.getDetailsMessage())
-                .setPositiveButton(R.string.OK, null)
-                .show();
-
-        TextView textView = (TextView) dialog.findViewById(android.R.id.message);
-        textView.setTextSize(12);
-    }
-
     protected class BrowseRegistryListener extends DefaultRegistryListener {
+
+        protected Context context;
+
+        public BrowseRegistryListener(Context context){ this.context = context; }
 
         /* Discovery performance optimization for very slow Android devices! */
         @Override
@@ -207,14 +235,14 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         public void deviceAdded(final Device device) {
             runOnUiThread(new Runnable() {
                 public void run() {
-                    DeviceDisplay d = new DeviceDisplay(device);
-                    int position = listAdapter.getPosition(d);
-                    if (position >= 0) {
+                    DeviceDisplay d = new DeviceDisplay(context,device);
+                    if(RVAdapter.contains(d)) {
                         // Device already in the list, re-set new value at same position
-                        listAdapter.remove(d);
-                        listAdapter.insert(d, position);
-                    } else {
-                        listAdapter.add(d);
+                        int position = RVAdapter.indexOf(d);
+                        RVAdapter.remove(d);
+                        RVAdapter.add(position, d);
+                    }else{
+                        RVAdapter.add(d);
                     }
                 }
             });
@@ -223,57 +251,9 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         public void deviceRemoved(final Device device) {
             runOnUiThread(new Runnable() {
                 public void run() {
-                    listAdapter.remove(new DeviceDisplay(device));
+                    RVAdapter.remove(new DeviceDisplay(context,device));
                 }
             });
-        }
-    }
-
-    protected class DeviceDisplay {
-
-        Device device;
-
-        public DeviceDisplay(Device device) {
-            this.device = device;
-        }
-
-        public Device getDevice() {
-            return device;
-        }
-
-        public String getDetailsMessage() {
-            StringBuilder sb = new StringBuilder();
-            if (getDevice().isFullyHydrated()) {
-                sb.append(getDevice().getDisplayString());
-                sb.append("\n\n");
-                for (Service service : getDevice().getServices()) {
-                    sb.append(service.getServiceType()).append("\n");
-                }
-            } else {
-                sb.append(getString(R.string.deviceDetailsNotYetAvailable));
-            }
-            return sb.toString();
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            DeviceDisplay that = (DeviceDisplay) o;
-            return device.equals(that.device);
-        }
-
-        @Override
-        public int hashCode() {
-            return device.hashCode();
-        }
-
-        @Override
-        public String toString() {
-            String name = getDevice().getDetails() != null && getDevice().getDetails().getFriendlyName() != null ?
-                    getDevice().getDetails().getFriendlyName() : getDevice().getDisplayString();
-            // Display a little star while the device is being loaded (see performance optimization earlier)
-            return device.isFullyHydrated() ? name : name + " *";
         }
     }
 
