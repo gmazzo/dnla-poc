@@ -53,6 +53,7 @@ public class MainActivity extends AppCompatActivity{
     private final BrowseRegistryListener registryListener = new BrowseRegistryListener(this);
     private RecyclerView devicesRecycler;
     private DevicesRVAdapter RVAdapter;
+    private Context mContext = this;
 
     private AndroidUpnpService upnpService;
     private ServiceConnection serviceConnection = new ServiceConnection() {
@@ -98,7 +99,7 @@ public class MainActivity extends AppCompatActivity{
             public void recyclerViewOnItemClickListener(View view, int position) {
                 DeviceDisplay deviceDisplay = RVAdapter.getItemAt(position);
 
-                AlertDialog dialog = new AlertDialog.Builder(getApplicationContext())
+                AlertDialog dialog = new AlertDialog.Builder(mContext)
                         .setTitle(R.string.deviceDetails)
                         .setMessage(deviceDisplay.getDetailsMessage())
                         .setPositiveButton(R.string.OK, null)
