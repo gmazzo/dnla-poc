@@ -20,14 +20,29 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+
+    packagingOptions {
+        exclude 'META-INF/DEPENDENCIES'
+        exclude 'META-INF/LICENSE'
+        exclude 'META-INF/LICENSE.txt'
+        exclude 'META-INF/license.txt'
+        exclude 'META-INF/NOTICE'
+        exclude 'META-INF/NOTICE.txt'
+        exclude 'META-INF/notice.txt'
+        exclude 'META-INF/ASL2.0'
+        exclude 'META-INF/beans.xml'
+    }
 }
 
-def appCompatVersion = '25.0.0'
+def appCompatVersion = '25.0.1'
 def jettyVersion = '8.1.22.v20160922'
+def clingVersion = '2.1.1'
 
 dependencies {
     compile "com.android.support:appcompat-v7:$appCompatVersion"
-    compile 'org.fourthline.cling:cling-core:2.1.1'
+    compile "org.fourthline.cling:cling-core:$clingVersion"
+    //compile "org.fourthline.cling:cling-support:$clingVersion"
+    compile group: 'org.fourthline.cling', name: 'cling-support', version:'2.1.1'
     compile "org.eclipse.jetty:jetty-servlet:$jettyVersion"
     compile "org.eclipse.jetty:jetty-client:$jettyVersion"
     compile "org.eclipse.jetty:jetty-server:$jettyVersion"

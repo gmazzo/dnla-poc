@@ -95,7 +95,7 @@ public class DevicesRVAdapter extends RecyclerView.Adapter<DevicesRVAdapter.Devi
                         rListener.recyclerViewOnItemClickListener(view, getLayoutPosition());
                     }
                 };
-                mainContainer.setOnClickListener(action);
+                //mainContainer.setOnClickListener(action);
                 checkBox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
                     @Override
                     public void onCheckedChanged(CompoundButton compoundButton, boolean checked) {

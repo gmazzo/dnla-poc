@@ -13,38 +13,29 @@ import android.support.v7.widget.RecyclerView;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import org.fourthline.cling.android.AndroidUpnpService;
 import org.fourthline.cling.android.AndroidUpnpServiceImpl;
 import org.fourthline.cling.android.FixedAndroidLogHandler;
-import org.fourthline.cling.model.Namespace;
-import org.fourthline.cling.model.ValidationException;
-import org.fourthline.cling.model.meta.Action;
+import org.fourthline.cling.model.action.ActionInvocation;
+import org.fourthline.cling.model.message.UpnpResponse;
 import org.fourthline.cling.model.meta.Device;
-import org.fourthline.cling.model.meta.DeviceDetails;
-import org.fourthline.cling.model.meta.DeviceIdentity;
-import org.fourthline.cling.model.meta.Icon;
 import org.fourthline.cling.model.meta.LocalDevice;
 import org.fourthline.cling.model.meta.RemoteDevice;
+import org.fourthline.cling.model.meta.RemoteService;
 import org.fourthline.cling.model.meta.Service;
-import org.fourthline.cling.model.meta.StateVariable;
-import org.fourthline.cling.model.meta.UDAVersion;
-import org.fourthline.cling.model.resource.Resource;
-import org.fourthline.cling.model.types.DeviceType;
-import org.fourthline.cling.model.types.ServiceId;
-import org.fourthline.cling.model.types.ServiceType;
-import org.fourthline.cling.model.types.UDN;
 import org.fourthline.cling.registry.DefaultRegistryListener;
 import org.fourthline.cling.registry.Registry;
+import org.fourthline.cling.support.contentdirectory.callback.Browse;
+import org.fourthline.cling.support.model.BrowseFlag;
+import org.fourthline.cling.support.model.DIDLContent;
 import org.fourthline.cling.transport.Router;
 import org.fourthline.cling.transport.RouterException;
 
-import java.net.URI;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -54,6 +45,8 @@ public class MainActivity extends AppCompatActivity{
     private RecyclerView devicesRecycler;
     private DevicesRVAdapter RVAdapter;
     private Context mContext = this;
+    //News
+    private LinearLayout mContentLayout;
 
     private AndroidUpnpService upnpService;
     private ServiceConnection serviceConnection = new ServiceConnection() {
@@ -69,7 +62,7 @@ public class MainActivity extends AppCompatActivity{
 
             // Now add all devices to the list we already know about
             for (Device device : upnpService.getRegistry().getDevices()) {
-                registryListener.deviceAdded(device);
+                registryListener.addDeviceInList(device);
             }
 
             // Search asynchronously for all devices, they will respond soon
@@ -87,6 +80,8 @@ public class MainActivity extends AppCompatActivity{
 
         setContentView(R.layout.main);
 
+        mContentLayout = (LinearLayout) findViewById(R.id.content_layout);
+
         //recycler
         devicesRecycler = (RecyclerView) findViewById(R.id.recycler_list_devices);
         LinearLayoutManager llm = new LinearLayoutManager(this);
@@ -99,14 +94,15 @@ public class MainActivity extends AppCompatActivity{
             public void recyclerViewOnItemClickListener(View view, int position) {
                 DeviceDisplay deviceDisplay = RVAdapter.getItemAt(position);
 
-                AlertDialog dialog = new AlertDialog.Builder(mContext)
+                /*AlertDialog dialog = new AlertDialog.Builder(mContext)
                         .setTitle(R.string.deviceDetails)
                         .setMessage(deviceDisplay.getDetailsMessage())
                         .setPositiveButton(R.string.OK, null)
                         .show();
 
                 TextView textView = (TextView) dialog.findViewById(android.R.id.message);
-                textView.setTextSize(12);
+                textView.setTextSize(12);*/
+                browsingBehavior(deviceDisplay);
             }
         });
         devicesRecycler.setAdapter(RVAdapter);
@@ -194,7 +190,7 @@ public class MainActivity extends AppCompatActivity{
         /* Discovery performance optimization for very slow Android devices! */
         @Override
         public void remoteDeviceDiscoveryStarted(Registry registry, RemoteDevice device) {
-            deviceAdded(device);
+            if(acceptableToShow(device)) addDeviceInList(device);
         }
 
         @Override
@@ -215,7 +211,7 @@ public class MainActivity extends AppCompatActivity{
 
         @Override
         public void remoteDeviceAdded(Registry registry, RemoteDevice device) {
-            deviceAdded(device);
+            if(acceptableToShow(device)) addDeviceInList(device);
         }
 
         @Override
@@ -225,7 +221,7 @@ public class MainActivity extends AppCompatActivity{
 
         @Override
         public void localDeviceAdded(Registry registry, LocalDevice device) {
-            deviceAdded(device);
+            if(acceptableToShow(device)) addDeviceInList(device);
         }
 
         @Override
@@ -233,7 +229,7 @@ public class MainActivity extends AppCompatActivity{
             deviceRemoved(device);
         }
 
-        public void deviceAdded(final Device device) {
+        public void addDeviceInList(final Device device) {
             runOnUiThread(new Runnable() {
                 public void run() {
                     DeviceDisplay d = new DeviceDisplay(context,device);
@@ -255,6 +251,36 @@ public class MainActivity extends AppCompatActivity{
                     RVAdapter.remove(new DeviceDisplay(context,device));
                 }
             });
+        }
+
+        private boolean acceptableToShow(Device device){
+            return (device.getType().getType().equals(Constants.TYPE_DEVICE_MEDIA_RENDER) ||
+                    device.getType().getType().equals(Constants.TYPE_DEVICE_MEDIA_SERVER) );
+        }
+    }
+
+    public void browsingBehavior(DeviceDisplay device){
+        if(device.getDevice().getType().getType().equals(Constants.TYPE_DEVICE_MEDIA_SERVER)){
+            for (Service service : device.getDevice().getServices()){
+                if(service.getServiceType().getType().equals(Constants.SERVICE_TYPE_CONTENT_DIRECTORY)){
+                    upnpService.getControlPoint().execute(new Browse(service,"0", BrowseFlag.DIRECT_CHILDREN) {
+                        @Override
+                        public void received(ActionInvocation actionInvocation, DIDLContent didl) {
+                            int itemNum = didl.getContainers().size();
+                            Toast.makeText(mContext, String.valueOf(itemNum),
+                                    Toast.LENGTH_LONG).show();
+                        }
+
+                        @Override
+                        public void updateStatus(Status status) { }
+
+                        @Override
+                        public void failure(ActionInvocation invocation, UpnpResponse operation, String defaultMsg) {
+                            String failure = defaultMsg;
+                        }
+                    });
+                }
+            }
         }
     }
 
