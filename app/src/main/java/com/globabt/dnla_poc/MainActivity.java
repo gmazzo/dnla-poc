@@ -6,7 +6,7 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.IBinder;
-import android.support.v7.app.AlertDialog;
+import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -14,24 +14,24 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.LinearLayout;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import org.fourthline.cling.android.AndroidUpnpService;
 import org.fourthline.cling.android.AndroidUpnpServiceImpl;
 import org.fourthline.cling.android.FixedAndroidLogHandler;
+import org.fourthline.cling.controlpoint.ActionCallback;
 import org.fourthline.cling.model.action.ActionInvocation;
 import org.fourthline.cling.model.message.UpnpResponse;
 import org.fourthline.cling.model.meta.Device;
 import org.fourthline.cling.model.meta.LocalDevice;
 import org.fourthline.cling.model.meta.RemoteDevice;
-import org.fourthline.cling.model.meta.RemoteService;
 import org.fourthline.cling.model.meta.Service;
 import org.fourthline.cling.registry.DefaultRegistryListener;
 import org.fourthline.cling.registry.Registry;
 import org.fourthline.cling.support.contentdirectory.callback.Browse;
 import org.fourthline.cling.support.model.BrowseFlag;
 import org.fourthline.cling.support.model.DIDLContent;
+import org.fourthline.cling.support.model.container.Container;
 import org.fourthline.cling.transport.Router;
 import org.fourthline.cling.transport.RouterException;
 
@@ -43,10 +43,21 @@ public class MainActivity extends AppCompatActivity{
 
     private final BrowseRegistryListener registryListener = new BrowseRegistryListener(this);
     private RecyclerView devicesRecycler;
-    private DevicesRVAdapter RVAdapter;
+    private RecyclerView directoriesRecycler;
+    private DevicesRVAdapter RVAdapterDevices;
+    private DirectoriesRVAdapter RVAdapterDirectories;
+
     private Context mContext = this;
-    //News
-    private LinearLayout mContentLayout;
+    //Layouts
+    private SwipeRefreshLayout mContentLayout;
+    private LinearLayout mBrowserLayout;
+    private LinearLayout mControlLayout;
+    //Constants
+    private final int BROWSER = 0;
+    private final int MULTIMEDIA_CONTROLLER = 1;
+    //Browser usage
+    private int parentID = -1;
+    private int actualID = 0;
 
     private AndroidUpnpService upnpService;
     private ServiceConnection serviceConnection = new ServiceConnection() {
@@ -55,7 +66,7 @@ public class MainActivity extends AppCompatActivity{
             upnpService = (AndroidUpnpService) service;
 
             // Clear the list
-            RVAdapter.clear();
+            RVAdapterDevices.clear();
 
             // Get ready for future device advertisements
             upnpService.getRegistry().addListener(registryListener);
@@ -74,13 +85,24 @@ public class MainActivity extends AppCompatActivity{
         }
     };
 
+
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         setContentView(R.layout.main);
 
-        mContentLayout = (LinearLayout) findViewById(R.id.content_layout);
+        //Layouts
+        mContentLayout = (SwipeRefreshLayout) findViewById(R.id.content_layout);
+        mBrowserLayout = (LinearLayout) findViewById(R.id.content_browser_layout);
+        mControlLayout = (LinearLayout) findViewById(R.id.multimedia_control_layout);
+        mContentLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+            @Override
+            public void onRefresh() {
+                mContentLayout.setRefreshing(false);
+            }
+        });
 
         //recycler
         devicesRecycler = (RecyclerView) findViewById(R.id.recycler_list_devices);
@@ -88,29 +110,27 @@ public class MainActivity extends AppCompatActivity{
         llm.setOrientation(LinearLayoutManager.VERTICAL);
         devicesRecycler.setHasFixedSize(true);
         devicesRecycler.setLayoutManager(llm);
-        RVAdapter = new DevicesRVAdapter(this, new ArrayList<DeviceDisplay>());
-        RVAdapter.setListener(new RecyclerViewListener() {
+        RVAdapterDevices = new DevicesRVAdapter(this, new ArrayList<DeviceDisplay>());
+        RVAdapterDevices.setListener(new RecyclerViewListener() {
             @Override
             public void recyclerViewOnItemClickListener(View view, int position) {
-                DeviceDisplay deviceDisplay = RVAdapter.getItemAt(position);
-
-                /*AlertDialog dialog = new AlertDialog.Builder(mContext)
-                        .setTitle(R.string.deviceDetails)
-                        .setMessage(deviceDisplay.getDetailsMessage())
-                        .setPositiveButton(R.string.OK, null)
-                        .show();
-
-                TextView textView = (TextView) dialog.findViewById(android.R.id.message);
-                textView.setTextSize(12);*/
-                browsingBehavior(deviceDisplay);
+                browsingBehavior(RVAdapterDevices.getItemAt(position));
             }
         });
-        devicesRecycler.setAdapter(RVAdapter);
+        devicesRecycler.setAdapter(RVAdapterDevices);
+
+        directoriesRecycler = (RecyclerView) findViewById(R.id.recycler_directories);
+        LinearLayoutManager llm2 = new LinearLayoutManager(this);
+        llm.setOrientation(LinearLayoutManager.VERTICAL);
+        directoriesRecycler.setHasFixedSize(true);
+        directoriesRecycler.setLayoutManager(llm2);
+        RVAdapterDirectories = new DirectoriesRVAdapter(mContext, new ArrayList<Container>());
+        directoriesRecycler.setAdapter(RVAdapterDirectories);
 
         // Fix the logging integration between java.util.logging and Android internal logging
         org.seamless.util.logging.LoggingUtil.resetRootHandler(new FixedAndroidLogHandler());
         // Now you can enable logging as needed for various categories of Cling:
-        // Logger.getLogger("org.fourthline.cling").setLevel(Level.FINEST);
+        //Logger.getLogger("org.fourthline.cling").setLevel(Level.FINEST);
 
         // This will start the UPnP service if it wasn't already started
         bindService(
@@ -233,13 +253,13 @@ public class MainActivity extends AppCompatActivity{
             runOnUiThread(new Runnable() {
                 public void run() {
                     DeviceDisplay d = new DeviceDisplay(context,device);
-                    if(RVAdapter.contains(d)) {
+                    if(RVAdapterDevices.contains(d)) {
                         // Device already in the list, re-set new value at same position
-                        int position = RVAdapter.indexOf(d);
-                        RVAdapter.remove(d);
-                        RVAdapter.add(position, d);
+                        int position = RVAdapterDevices.indexOf(d);
+                        RVAdapterDevices.remove(d);
+                        RVAdapterDevices.add(position, d);
                     }else{
-                        RVAdapter.add(d);
+                        RVAdapterDevices.add(d);
                     }
                 }
             });
@@ -248,7 +268,7 @@ public class MainActivity extends AppCompatActivity{
         public void deviceRemoved(final Device device) {
             runOnUiThread(new Runnable() {
                 public void run() {
-                    RVAdapter.remove(new DeviceDisplay(context,device));
+                    RVAdapterDevices.remove(new DeviceDisplay(context,device));
                 }
             });
         }
@@ -259,29 +279,69 @@ public class MainActivity extends AppCompatActivity{
         }
     }
 
-    public void browsingBehavior(DeviceDisplay device){
+    public void browsingBehavior(final DeviceDisplay device){
         if(device.getDevice().getType().getType().equals(Constants.TYPE_DEVICE_MEDIA_SERVER)){
             for (Service service : device.getDevice().getServices()){
                 if(service.getServiceType().getType().equals(Constants.SERVICE_TYPE_CONTENT_DIRECTORY)){
-                    upnpService.getControlPoint().execute(new Browse(service,"0", BrowseFlag.DIRECT_CHILDREN) {
+
+                    executeBrowsing(upnpService, service, "0", new BrowseCustomListener() { //Main root
                         @Override
-                        public void received(ActionInvocation actionInvocation, DIDLContent didl) {
-                            int itemNum = didl.getContainers().size();
-                            Toast.makeText(mContext, String.valueOf(itemNum),
-                                    Toast.LENGTH_LONG).show();
+                        public void received(ActionInvocation actionInvocation, final DIDLContent didl) {
+                            RVAdapterDirectories.clear();
+                            RVAdapterDirectories.addAll(new ArrayList<Container>(didl.getContainers()));
+                            RVAdapterDirectories.setListener(new RecyclerViewListener() {
+                                @Override
+                                public void recyclerViewOnItemClickListener(View view, int position) {
+                                    //TODO
+                                }
+                            });
+                            mBrowserLayout.setVisibility(View.VISIBLE);
+                            mControlLayout.setVisibility(View.GONE);
+                            mContentLayout.setRefreshing(false);
                         }
 
                         @Override
-                        public void updateStatus(Status status) { }
+                        public void updateStatus(Browse.Status status) {}
 
                         @Override
-                        public void failure(ActionInvocation invocation, UpnpResponse operation, String defaultMsg) {
-                            String failure = defaultMsg;
+                        public void failure(ActionInvocation invocation, UpnpResponse operation, final String defaultMsg) {
+                            Toast.makeText(mContext, defaultMsg, Toast.LENGTH_LONG).show();
+                            mContentLayout.setRefreshing(false);
                         }
                     });
                 }
             }
+        }else{
+            RVAdapterDirectories.clear();
         }
+    }
+
+   public void executeBrowsing(AndroidUpnpService upnpService, Service service, String directoryID, final BrowseCustomListener browseListener) {
+        mContentLayout.setRefreshing(true);
+        upnpService.getControlPoint().execute(new Browse(service, directoryID, BrowseFlag.DIRECT_CHILDREN) {
+            @Override
+            public void received(final ActionInvocation actionInvocation, final DIDLContent didl) {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        browseListener.received(actionInvocation,didl);
+                    }
+                });
+            }
+
+            @Override
+            public void updateStatus(final Status status) { /*Nothing here*/}
+
+            @Override
+            public void failure(final ActionInvocation invocation, final UpnpResponse operation, final String defaultMsg) {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        failure(invocation,operation,defaultMsg);
+                    }
+                });
+            }
+        });
     }
 
 }

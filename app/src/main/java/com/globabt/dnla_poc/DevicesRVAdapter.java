@@ -107,7 +107,7 @@ public class DevicesRVAdapter extends RecyclerView.Adapter<DevicesRVAdapter.Devi
         }
 
         private void checkboxBehavior(CheckBox checkBox){
-            if(lastCheckbox != null) lastCheckbox.setChecked(false);
+            if(lastCheckbox != null){ lastCheckbox.setChecked(false); }
             lastCheckbox = checkBox;
         }
     }

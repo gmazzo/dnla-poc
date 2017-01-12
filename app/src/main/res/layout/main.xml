@@ -24,15 +24,40 @@
         android:layout_height="1dp"
         android:background="#000000"/>
 
-    <LinearLayout
+    <android.support.v4.widget.SwipeRefreshLayout
         android:id="@+id/content_layout"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_weight="0.5"
         android:orientation="vertical">
 
+        <LinearLayout
+            android:id="@+id/content_browser_layout"
+            android:orientation="vertical"
+            android:visibility="gone"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
 
-    </LinearLayout>
+            <android.support.v7.widget.RecyclerView
+                android:id="@+id/recycler_directories"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"/>
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/multimedia_control_layout"
+            android:orientation="vertical"
+            android:visibility="gone"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <!-- TODO multimedia control -->
+
+        </LinearLayout>
+
+
+    </android.support.v4.widget.SwipeRefreshLayout>
 
 
 
