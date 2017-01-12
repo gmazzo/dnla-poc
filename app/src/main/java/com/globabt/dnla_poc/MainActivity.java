@@ -56,8 +56,8 @@ public class MainActivity extends AppCompatActivity{
     private final int BROWSER = 0;
     private final int MULTIMEDIA_CONTROLLER = 1;
     //Browser usage
-    private int parentID = -1;
-    private int actualID = 0;
+    private String parentID = "-1";
+    private String actualID = "0";
 
     private AndroidUpnpService upnpService;
     private ServiceConnection serviceConnection = new ServiceConnection() {
@@ -281,7 +281,7 @@ public class MainActivity extends AppCompatActivity{
 
     public void browsingBehavior(final DeviceDisplay device){
         if(device.getDevice().getType().getType().equals(Constants.TYPE_DEVICE_MEDIA_SERVER)){
-            for (Service service : device.getDevice().getServices()){
+            for (final Service service : device.getDevice().getServices()){
                 if(service.getServiceType().getType().equals(Constants.SERVICE_TYPE_CONTENT_DIRECTORY)){
 
                     executeBrowsing(upnpService, service, "0", new BrowseCustomListener() { //Main root
@@ -293,6 +293,7 @@ public class MainActivity extends AppCompatActivity{
                                 @Override
                                 public void recyclerViewOnItemClickListener(View view, int position) {
                                     //TODO
+                                    contentBrowsing(upnpService, service,RVAdapterDirectories.getItemAt(position));
                                 }
                             });
                             mBrowserLayout.setVisibility(View.VISIBLE);
@@ -316,6 +317,30 @@ public class MainActivity extends AppCompatActivity{
         }
     }
 
+    public void contentBrowsing(AndroidUpnpService upnpService, Service service,Container container){
+        parentID = container.getParentID();
+        actualID = container.getId();
+        executeBrowsing(upnpService, service, actualID, new BrowseCustomListener() {
+            @Override
+            public void received(ActionInvocation actionInvocation, DIDLContent didl) {
+                //TODO
+                RVAdapterDirectories.clear();
+                RVAdapterDirectories.addAll(new ArrayList<Container>(didl.getContainers()));
+                mContentLayout.setRefreshing(false);
+            }
+
+            @Override
+            public void updateStatus(Browse.Status status) { }
+
+            @Override
+            public void failure(ActionInvocation invocation, UpnpResponse operation, String defaultMsg) {
+                //TODO
+            }
+        });
+    }
+
+
+
    public void executeBrowsing(AndroidUpnpService upnpService, Service service, String directoryID, final BrowseCustomListener browseListener) {
         mContentLayout.setRefreshing(true);
         upnpService.getControlPoint().execute(new Browse(service, directoryID, BrowseFlag.DIRECT_CHILDREN) {
@@ -334,12 +359,12 @@ public class MainActivity extends AppCompatActivity{
 
             @Override
             public void failure(final ActionInvocation invocation, final UpnpResponse operation, final String defaultMsg) {
-                runOnUiThread(new Runnable() {
+                /*runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
                         failure(invocation,operation,defaultMsg);
                     }
-                });
+                });*/
             }
         });
     }
