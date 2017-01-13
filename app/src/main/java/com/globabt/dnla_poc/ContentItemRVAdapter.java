@@ -5,6 +5,7 @@ import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -16,13 +17,13 @@ import java.util.ArrayList;
  * Created by yamil.marques on 11/01/2017.
  */
 
-public class DirectoriesRVAdapter extends RecyclerView.Adapter<DirectoriesRVAdapter.DirectoriesViewHolder>{
+public class ContentItemRVAdapter extends RecyclerView.Adapter<ContentItemRVAdapter.DirectoriesViewHolder>{
 
-    private ArrayList<Container> itemsList;
+    private ArrayList<BrowsableItemInterface> itemsList;
     private RecyclerViewListener listener;
     private Context context;
 
-    public DirectoriesRVAdapter(Context context, ArrayList<Container> itemsList){
+    public ContentItemRVAdapter(Context context, ArrayList<BrowsableItemInterface> itemsList){
         this.context = context;
         this.itemsList = itemsList;
     }
@@ -32,15 +33,15 @@ public class DirectoriesRVAdapter extends RecyclerView.Adapter<DirectoriesRVAdap
         itemsList.clear();
         notifyDataSetChanged();
     }
-    public void add(Container itemToAdd){
+    public void add(BrowsableItemInterface itemToAdd){
         itemsList.add(itemToAdd);
         notifyDataSetChanged();
     }
-    public void add(int position, Container itemToAdd){
+    public void add(int position, BrowsableItemInterface itemToAdd){
         itemsList.add(position, itemToAdd);
         notifyDataSetChanged();
     }
-    public void addAll(ArrayList<Container> addList){
+    public void addAll(ArrayList<? extends BrowsableItemInterface> addList){
         itemsList.addAll(addList);
         notifyDataSetChanged();
     }
@@ -54,20 +55,20 @@ public class DirectoriesRVAdapter extends RecyclerView.Adapter<DirectoriesRVAdap
     public int indexOf(Container item){
         return itemsList.indexOf(item);
     }
-    public Container getItemAt(int item){return itemsList.get(item);}
+    public BrowsableItemInterface getItemAt(int item){return itemsList.get(item);}
 
 
     @Override
     public DirectoriesViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
         View itemView = LayoutInflater.from(parent.getContext()).inflate(R.layout.browser_item_layout,parent,false);
-        return new DirectoriesRVAdapter.DirectoriesViewHolder(itemView,listener);
+        return new ContentItemRVAdapter.DirectoriesViewHolder(itemView,listener);
     }
 
     @Override
     public void onBindViewHolder(DirectoriesViewHolder holder, int position) {
-        final Container item = itemsList.get(position);
+        final BrowsableItemInterface item = itemsList.get(position);
         holder.itemName.setText(item.getTitle());
-        int numDataInside = item.getChildCount() + item.getItems().size();
+        int numDataInside = item.getTotalCount();
         if(numDataInside > 0){
             holder.itemsNumber.setText(String.valueOf(numDataInside));
             holder.itemsNumber.setVisibility(View.VISIBLE);
@@ -75,6 +76,7 @@ public class DirectoriesRVAdapter extends RecyclerView.Adapter<DirectoriesRVAdap
         else {
             holder.itemsNumber.setVisibility(View.GONE);
         }
+        holder.icon.setVisibility((item.isContainer())? View.VISIBLE : View.GONE);
     }
 
     @Override
@@ -87,12 +89,14 @@ public class DirectoriesRVAdapter extends RecyclerView.Adapter<DirectoriesRVAdap
         protected LinearLayout mainContainer;
         protected TextView itemName;
         protected TextView itemsNumber;
+        protected ImageView icon;
 
         public DirectoriesViewHolder(final View v, final RecyclerViewListener rListener) {
             super(v);
             mainContainer = (LinearLayout) v.findViewById(R.id.container);
             itemName = (TextView) v.findViewById(R.id.device_name);
             itemsNumber = (TextView) v.findViewById(R.id.items_number);
+            icon = (ImageView) v.findViewById(R.id.icon);
 
             if(rListener != null){
                 mainContainer.setOnClickListener(new View.OnClickListener() {

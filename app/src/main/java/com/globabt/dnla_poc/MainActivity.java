@@ -19,7 +19,6 @@ import android.widget.Toast;
 import org.fourthline.cling.android.AndroidUpnpService;
 import org.fourthline.cling.android.AndroidUpnpServiceImpl;
 import org.fourthline.cling.android.FixedAndroidLogHandler;
-import org.fourthline.cling.controlpoint.ActionCallback;
 import org.fourthline.cling.model.action.ActionInvocation;
 import org.fourthline.cling.model.message.UpnpResponse;
 import org.fourthline.cling.model.meta.Device;
@@ -32,10 +31,12 @@ import org.fourthline.cling.support.contentdirectory.callback.Browse;
 import org.fourthline.cling.support.model.BrowseFlag;
 import org.fourthline.cling.support.model.DIDLContent;
 import org.fourthline.cling.support.model.container.Container;
+import org.fourthline.cling.support.model.item.Item;
 import org.fourthline.cling.transport.Router;
 import org.fourthline.cling.transport.RouterException;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -45,7 +46,7 @@ public class MainActivity extends AppCompatActivity{
     private RecyclerView devicesRecycler;
     private RecyclerView directoriesRecycler;
     private DevicesRVAdapter RVAdapterDevices;
-    private DirectoriesRVAdapter RVAdapterDirectories;
+    private ContentItemRVAdapter RVAdapterDirectories;
 
     private Context mContext = this;
     //Layouts
@@ -124,7 +125,7 @@ public class MainActivity extends AppCompatActivity{
         llm.setOrientation(LinearLayoutManager.VERTICAL);
         directoriesRecycler.setHasFixedSize(true);
         directoriesRecycler.setLayoutManager(llm2);
-        RVAdapterDirectories = new DirectoriesRVAdapter(mContext, new ArrayList<Container>());
+        RVAdapterDirectories = new ContentItemRVAdapter(mContext, new ArrayList<BrowsableItemInterface>());
         directoriesRecycler.setAdapter(RVAdapterDirectories);
 
         // Fix the logging integration between java.util.logging and Android internal logging
@@ -288,7 +289,7 @@ public class MainActivity extends AppCompatActivity{
                         @Override
                         public void received(ActionInvocation actionInvocation, final DIDLContent didl) {
                             RVAdapterDirectories.clear();
-                            RVAdapterDirectories.addAll(new ArrayList<Container>(didl.getContainers()));
+                            RVAdapterDirectories.addAll(new ArrayList<BrowsableItemInterface>(generateBaseList(didl)));
                             RVAdapterDirectories.setListener(new RecyclerViewListener() {
                                 @Override
                                 public void recyclerViewOnItemClickListener(View view, int position) {
@@ -317,15 +318,28 @@ public class MainActivity extends AppCompatActivity{
         }
     }
 
-    public void contentBrowsing(AndroidUpnpService upnpService, Service service,Container container){
-        parentID = container.getParentID();
-        actualID = container.getId();
+    private List<BrowsableItemInterface> generateBaseList(DIDLContent didl){
+        List<BrowsableItemInterface> list = new ArrayList<>();
+        //Directories
+        for (Container item : didl.getContainers()){
+            list.add(new BrowsableDirectory(item));
+        }
+        //Items
+        for (Item item : didl.getItems()){
+            list.add(new BrowsableItem(item));
+        }
+        return list;
+    }
+
+    public void contentBrowsing(AndroidUpnpService upnpService, Service service,BrowsableItemInterface item){
+        parentID = item.getParentID();
+        actualID = item.getID();
         executeBrowsing(upnpService, service, actualID, new BrowseCustomListener() {
             @Override
             public void received(ActionInvocation actionInvocation, DIDLContent didl) {
                 //TODO
                 RVAdapterDirectories.clear();
-                RVAdapterDirectories.addAll(new ArrayList<Container>(didl.getContainers()));
+                RVAdapterDirectories.addAll(new ArrayList<BrowsableItemInterface>(generateBaseList(didl)));
                 mContentLayout.setRefreshing(false);
             }
 
@@ -355,7 +369,7 @@ public class MainActivity extends AppCompatActivity{
             }
 
             @Override
-            public void updateStatus(final Status status) { /*Nothing here*/}
+            public void updateStatus(final Status status) { /*Nothing here*/ }//TODO check it!
 
             @Override
             public void failure(final ActionInvocation invocation, final UpnpResponse operation, final String defaultMsg) {
