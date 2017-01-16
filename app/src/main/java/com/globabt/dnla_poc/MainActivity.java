@@ -337,7 +337,6 @@ public class MainActivity extends AppCompatActivity{
         executeBrowsing(upnpService, service, actualID, new BrowseCustomListener() {
             @Override
             public void received(ActionInvocation actionInvocation, DIDLContent didl) {
-                //TODO
                 RVAdapterDirectories.clear();
                 RVAdapterDirectories.addAll(new ArrayList<BrowsableItemInterface>(generateBaseList(didl)));
                 mContentLayout.setRefreshing(false);

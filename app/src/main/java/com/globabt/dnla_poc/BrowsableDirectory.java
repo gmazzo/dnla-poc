@@ -38,4 +38,6 @@ public class BrowsableDirectory implements BrowsableItemInterface {
     public String getTitle() {
         return container.getTitle();
     }
+
+    public Container getContainer(){ return container; }
 }

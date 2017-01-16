@@ -39,4 +39,6 @@ public class BrowsableItem implements BrowsableItemInterface {
     public String getTitle() {
         return item.getTitle();
     }
+
+    public Item getItem(){ return item; }
 }
