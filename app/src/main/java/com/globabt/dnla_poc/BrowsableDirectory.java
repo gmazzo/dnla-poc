@@ -30,13 +30,13 @@ public class BrowsableDirectory implements BrowsableItemInterface {
     }
 
     @Override
-    public boolean isContainer() {
-        return true;
+    public String getTitle() {
+        return container.getTitle();
     }
 
     @Override
-    public String getTitle() {
-        return container.getTitle();
+    public String getType() {
+        return Constants.ITEM_TYPE_DIRECTORY;
     }
 
     public Container getContainer(){ return container; }

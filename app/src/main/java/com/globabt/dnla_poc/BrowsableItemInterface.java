@@ -8,6 +8,6 @@ public interface BrowsableItemInterface {
     int getTotalCount();
     String getParentID();
     String getID();
-    boolean isContainer();
     String getTitle();
+    String getType();
 }

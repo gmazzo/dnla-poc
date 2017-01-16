@@ -67,7 +67,7 @@ public class ContentItemRVAdapter extends RecyclerView.Adapter<ContentItemRVAdap
     @Override
     public void onBindViewHolder(DirectoriesViewHolder holder, int position) {
         final BrowsableItemInterface item = itemsList.get(position);
-        holder.itemName.setText(item.getTitle());
+        holder.itemName.setText((item.getType().equals(Constants.ITEM_TYPE_BACK))? "Back" : item.getTitle());
         int numDataInside = item.getTotalCount();
         if(numDataInside > 0){
             holder.itemsNumber.setText(String.valueOf(numDataInside));
@@ -76,7 +76,8 @@ public class ContentItemRVAdapter extends RecyclerView.Adapter<ContentItemRVAdap
         else {
             holder.itemsNumber.setVisibility(View.GONE);
         }
-        holder.icon.setVisibility((item.isContainer())? View.VISIBLE : View.GONE);
+        holder.icon.setVisibility((item.getType().equals(Constants.ITEM_TYPE_DIRECTORY))? View.VISIBLE : View.GONE);
+        if(item.getType().equals(Constants.ITEM_TYPE_FILE)){ holder.extrasText.setText(((BrowsableItem)item).getResolution()); }
     }
 
     @Override
@@ -87,8 +88,7 @@ public class ContentItemRVAdapter extends RecyclerView.Adapter<ContentItemRVAdap
     protected static class DirectoriesViewHolder extends RecyclerView.ViewHolder {
 
         protected LinearLayout mainContainer;
-        protected TextView itemName;
-        protected TextView itemsNumber;
+        protected TextView itemName, extrasText, itemsNumber;
         protected ImageView icon;
 
         public DirectoriesViewHolder(final View v, final RecyclerViewListener rListener) {
@@ -97,6 +97,7 @@ public class ContentItemRVAdapter extends RecyclerView.Adapter<ContentItemRVAdap
             itemName = (TextView) v.findViewById(R.id.device_name);
             itemsNumber = (TextView) v.findViewById(R.id.items_number);
             icon = (ImageView) v.findViewById(R.id.icon);
+            extrasText = (TextView) v.findViewById(R.id.extras_text);
 
             if(rListener != null){
                 mainContainer.setOnClickListener(new View.OnClickListener() {

@@ -24,41 +24,41 @@
         android:layout_height="1dp"
         android:background="#000000"/>
 
-    <android.support.v4.widget.SwipeRefreshLayout
-        android:id="@+id/content_layout"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_weight="0.5"
-        android:orientation="vertical">
+        android:orientation="vertical"
+        android:gravity="bottom|center"
+        android:layout_weight="0.5">
 
-        <LinearLayout
-            android:id="@+id/content_browser_layout"
-            android:orientation="vertical"
-            android:visibility="gone"
+        <android.support.v4.widget.SwipeRefreshLayout
+            android:id="@+id/content_directory_layout"
             android:layout_width="match_parent"
-            android:layout_height="match_parent">
+            android:layout_height="match_parent"
+            android:visibility="gone"
+            android:orientation="vertical">
 
-            <android.support.v7.widget.RecyclerView
-                android:id="@+id/recycler_directories"
+            <LinearLayout
+                android:id="@+id/content_browser_layout"
+                android:orientation="vertical"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"/>
+                android:layout_height="match_parent">
 
-        </LinearLayout>
+                <android.support.v7.widget.RecyclerView
+                    android:id="@+id/recycler_directories"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"/>
 
-        <LinearLayout
-            android:id="@+id/multimedia_control_layout"
-            android:orientation="vertical"
-            android:visibility="gone"
+            </LinearLayout>
+
+        </android.support.v4.widget.SwipeRefreshLayout>
+
+        <com.globabt.dnla_poc.RenderControllerView
+            android:id="@+id/multimedia_control_view"
             android:layout_width="match_parent"
-            android:layout_height="match_parent">
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="10dp"/>
 
-            <!-- TODO multimedia control -->
-
-        </LinearLayout>
-
-
-    </android.support.v4.widget.SwipeRefreshLayout>
-
-
+    </LinearLayout>
 
 </LinearLayout>

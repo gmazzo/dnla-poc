@@ -50,15 +50,15 @@ public class MainActivity extends AppCompatActivity{
 
     private Context mContext = this;
     //Layouts
-    private SwipeRefreshLayout mContentLayout;
+    private SwipeRefreshLayout mContentDirectoryLayout;
     private LinearLayout mBrowserLayout;
-    private LinearLayout mControlLayout;
+    private RenderControllerView mControlView;
     //Constants
     private final int BROWSER = 0;
     private final int MULTIMEDIA_CONTROLLER = 1;
     //Browser usage
-    private String parentID = "-1";
-    private String actualID = "0";
+    private String parentID;
+    private String actualID;
 
     private AndroidUpnpService upnpService;
     private ServiceConnection serviceConnection = new ServiceConnection() {
@@ -95,13 +95,13 @@ public class MainActivity extends AppCompatActivity{
         setContentView(R.layout.main);
 
         //Layouts
-        mContentLayout = (SwipeRefreshLayout) findViewById(R.id.content_layout);
+        mContentDirectoryLayout = (SwipeRefreshLayout) findViewById(R.id.content_directory_layout);
         mBrowserLayout = (LinearLayout) findViewById(R.id.content_browser_layout);
-        mControlLayout = (LinearLayout) findViewById(R.id.multimedia_control_layout);
-        mContentLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+        mControlView = (RenderControllerView) findViewById(R.id.multimedia_control_view);
+        mContentDirectoryLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
             @Override
             public void onRefresh() {
-                mContentLayout.setRefreshing(false);
+                mContentDirectoryLayout.setRefreshing(false);
             }
         });
 
@@ -285,6 +285,7 @@ public class MainActivity extends AppCompatActivity{
             for (final Service service : device.getDevice().getServices()){
                 if(service.getServiceType().getType().equals(Constants.SERVICE_TYPE_CONTENT_DIRECTORY)){
 
+                    refreshData();
                     executeBrowsing(upnpService, service, "0", new BrowseCustomListener() { //Main root
                         @Override
                         public void received(ActionInvocation actionInvocation, final DIDLContent didl) {
@@ -293,13 +294,12 @@ public class MainActivity extends AppCompatActivity{
                             RVAdapterDirectories.setListener(new RecyclerViewListener() {
                                 @Override
                                 public void recyclerViewOnItemClickListener(View view, int position) {
-                                    //TODO
                                     contentBrowsing(upnpService, service,RVAdapterDirectories.getItemAt(position));
                                 }
                             });
-                            mBrowserLayout.setVisibility(View.VISIBLE);
-                            mControlLayout.setVisibility(View.GONE);
-                            mContentLayout.setRefreshing(false);
+                            mContentDirectoryLayout.setVisibility(View.VISIBLE);
+                            mContentDirectoryLayout.setRefreshing(false);
+                            mControlView.setVisibility(View.GONE);
                         }
 
                         @Override
@@ -308,18 +308,31 @@ public class MainActivity extends AppCompatActivity{
                         @Override
                         public void failure(ActionInvocation invocation, UpnpResponse operation, final String defaultMsg) {
                             Toast.makeText(mContext, defaultMsg, Toast.LENGTH_LONG).show();
-                            mContentLayout.setRefreshing(false);
+                            mContentDirectoryLayout.setRefreshing(false);
                         }
                     });
                 }
             }
         }else{
             RVAdapterDirectories.clear();
+            if(device.getDevice().getType().getType().equals(Constants.TYPE_DEVICE_MEDIA_RENDER)){
+                mContentDirectoryLayout.setVisibility(View.GONE);
+                mControlView.setVisibility(View.VISIBLE);
+            }
         }
+    }
+
+    private void refreshData() {
+        parentID = "0";
+        actualID = "0";
     }
 
     private List<BrowsableItemInterface> generateBaseList(DIDLContent didl){
         List<BrowsableItemInterface> list = new ArrayList<>();
+        //Back item
+        if(!actualID.equals("0")){
+            list.add(new BackSpecialItem(parentID));
+        }
         //Directories
         for (Container item : didl.getContainers()){
             list.add(new BrowsableDirectory(item));
@@ -339,7 +352,7 @@ public class MainActivity extends AppCompatActivity{
             public void received(ActionInvocation actionInvocation, DIDLContent didl) {
                 RVAdapterDirectories.clear();
                 RVAdapterDirectories.addAll(new ArrayList<BrowsableItemInterface>(generateBaseList(didl)));
-                mContentLayout.setRefreshing(false);
+                mContentDirectoryLayout.setRefreshing(false);
             }
 
             @Override
@@ -355,7 +368,7 @@ public class MainActivity extends AppCompatActivity{
 
 
    public void executeBrowsing(AndroidUpnpService upnpService, Service service, String directoryID, final BrowseCustomListener browseListener) {
-        mContentLayout.setRefreshing(true);
+        mContentDirectoryLayout.setRefreshing(true);
         upnpService.getControlPoint().execute(new Browse(service, directoryID, BrowseFlag.DIRECT_CHILDREN) {
             @Override
             public void received(final ActionInvocation actionInvocation, final DIDLContent didl) {

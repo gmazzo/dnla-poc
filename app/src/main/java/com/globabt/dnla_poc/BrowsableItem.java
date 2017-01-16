@@ -31,14 +31,18 @@ public class BrowsableItem implements BrowsableItemInterface {
     }
 
     @Override
-    public boolean isContainer() {
-        return false;
-    }
-
-    @Override
     public String getTitle() {
         return item.getTitle();
     }
 
+    @Override
+    public String getType() {
+        return Constants.ITEM_TYPE_FILE;
+    }
+
     public Item getItem(){ return item; }
+
+    public String getResolution(){
+        return item.getResources().get(0).getResolution();
+    }
 }
